@@ -3,6 +3,9 @@
   "module": "/src/index.ts",
   "type": "module",
   "private": true,
+  "scripts": {
+    "dev": "bun --watch src/index.ts"
+  },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@types/bun": "^1.2.7",

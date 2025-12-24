@@ -11,8 +11,8 @@ type Thumbnail = {
 };
 const MAX_UPLOAD_SIZE = 10 * 1024 * 1024; // 10 MB
 
-const videoThumbnails: Map<string, Thumbnail> = new Map();
-
+//const videoThumbnails: Map<string, Thumbnail> = new Map();
+/*
 export async function handlerGetThumbnail(cfg: ApiConfig, req: BunRequest) {
   const { videoId } = req.params as { videoId?: string };
   if (!videoId) {
@@ -36,7 +36,7 @@ export async function handlerGetThumbnail(cfg: ApiConfig, req: BunRequest) {
     },
   });
 }
-
+*/
 export async function handlerUploadThumbnail(cfg: ApiConfig, req: BunRequest) {
   const { videoId } = req.params as { videoId?: string };
   if (!videoId) {
@@ -67,14 +67,13 @@ export async function handlerUploadThumbnail(cfg: ApiConfig, req: BunRequest) {
     if (!video) {
       throw new NotFoundError("Couldn't find video");
     }
-    videoThumbnails.set(videoId, {
-      data,
-      mediaType: thumbnail.type,
-    });
 
-    //generate thumbnail URL
-    const thumbnailURL = `http://localhost:${cfg.port}/api/thumbnails/${videoId}`;
-    video.thumbnailURL = thumbnailURL;
+    // Store base64 image data in the thumbnail_url field
+    const base64Data = Buffer.from(data).toString("base64");
+    const dataURL = `data:${thumbnail.type};base64,${base64Data}`;
+    console.log("thumbnail dataURL", dataURL);
+    video.thumbnailURL = dataURL;
+
     updateVideo(cfg.db, video);
 
     // Return the video metadata
