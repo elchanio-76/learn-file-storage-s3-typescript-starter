@@ -2,8 +2,10 @@ import { getBearerToken, validateJWT } from "../auth";
 import { respondWithJSON } from "./json";
 import { getVideo, updateVideo } from "../db/videos";
 import type { ApiConfig } from "../config";
-import type { BunRequest } from "bun";
+import { file, type BunRequest } from "bun";
 import { BadRequestError, NotFoundError, UserForbiddenError } from "./errors";
+import path from "path";
+import { randomBytes } from "crypto";
 
 type Thumbnail = {
   data: ArrayBuffer;
@@ -68,11 +70,16 @@ export async function handlerUploadThumbnail(cfg: ApiConfig, req: BunRequest) {
       throw new NotFoundError("Couldn't find video");
     }
 
-    // Store base64 image data in the thumbnail_url field
-    const base64Data = Buffer.from(data).toString("base64");
-    const dataURL = `data:${thumbnail.type};base64,${base64Data}`;
-    console.log("thumbnail dataURL", dataURL);
-    video.thumbnailURL = dataURL;
+    // Store image in filesystem
+    const fileExtension = thumbnail.type.split("/")[1];
+    const randomFileName = randomBytes(32).toString("base64url");
+    const filePath = path.join(cfg.assetsRoot, `${randomFileName}.${fileExtension}`);
+    if(thumbnail.type !== "image/jpeg" && thumbnail.type !== "image/png"){
+      throw new BadRequestError("Invalid thumbnail type. Accepting only image/jpeg or image/png");
+    }
+    
+    await Bun.write(filePath, data);
+    video.thumbnailURL = `http://localhost:${cfg.port}/assets/${randomFileName}.${fileExtension}`;
 
     updateVideo(cfg.db, video);
 

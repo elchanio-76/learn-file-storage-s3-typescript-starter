@@ -1,5 +1,7 @@
 import { newDatabase } from "./db/db";
 import type { Database } from "bun:sqlite";
+import { S3Client } from "bun";
+import { s3 } from "bun";
 
 export type ApiConfig = {
   db: Database;
@@ -11,6 +13,7 @@ export type ApiConfig = {
   s3Region: string;
   s3CfDistribution: string;
   port: string;
+  s3Client: S3Client;
 };
 
 const pathToDB = envOrThrow("DB_PATH");
@@ -35,6 +38,13 @@ export const cfg: ApiConfig = {
   s3Region: s3Region,
   s3CfDistribution: s3CfDistribution,
   port: port,
+  s3Client: new S3Client({
+    accessKeyId: envOrThrow("AWS_ACCESS_KEY_ID"),
+    secretAccessKey: envOrThrow("AWS_SECRET_ACCESS_KEY"),
+    region: s3Region,
+    bucket: s3Bucket,
+    //endpoint: `https://${s3Bucket}.s3.${s3Region}.amazonaws.com/`,
+  }),
 };
 
 function envOrThrow(key: string) {
@@ -44,3 +54,5 @@ function envOrThrow(key: string) {
   }
   return envVar;
 }
+
+export const MAX_UPLOAD_SIZE = 10 * 1024 * 1024; // 10 MB
