@@ -43,23 +43,25 @@ export async function handlerUploadVideo(cfg: ApiConfig, req: BunRequest) {
   const ext = videoFile.type.split("/")[1];
   const tmpFilePath = `/tmp/${videoId}.${ext}`;
   const bytes = await Bun.write(tmpFilePath, videoFile);
+  const processedVideo = processVideoForFastStart(tmpFilePath);
 
   console.log(`wrote ${bytes} bytes to ${tmpFilePath}`);
 
   // Upload video in Amazon S3
   const randomFileName = randomBytes(32).toString("base64url");
-  const aspectRatio = await getVideoAspectRatio(tmpFilePath);
+  const aspectRatio = await getVideoAspectRatio(processedVideo);
   console.log("aspect ratio: ", aspectRatio);
 
   const s3VideoKey = `${aspectRatio}/${randomFileName}.${ext}`;
   const s3File =  cfg.s3Client.file(s3VideoKey);
   console.log(`uploading video to s3. Bucket: ${s3File.bucket}, Key: ${s3VideoKey}, ${s3File.name}`);
-  const uploaded = await s3File.write(await Bun.file(tmpFilePath).bytes(), {type: videoFile.type});
+  const uploaded = await s3File.write(await Bun.file(processedVideo).bytes(), {type: videoFile.type});
   console.log("Bytes uploaded: ", uploaded);
 
-  // delete tmpfile
+  // delete tmpfiles
   await Bun.file(tmpFilePath).delete()
-  
+  await Bun.file(processedVideo).delete();
+
   // Store video URL in DB
   const videoURL = `https://${cfg.s3Bucket}.s3.${cfg.s3Region}.amazonaws.com/${s3VideoKey}`;
   videoData.videoURL = videoURL;
@@ -95,4 +97,18 @@ async function getVideoDimensions(filepath: string): Promise<{ width: number; he
   const output = await new Response(stdout).json();
   const stream = output.streams[0];
   return { width: stream.width, height: stream.height };
+}
+
+function processVideoForFastStart(inputFilePath: string): string {
+  const outputFilePath = inputFilePath.replace(".mp4", "_faststart.mp4");
+  const command = `ffmpeg -i ${inputFilePath} -movflags faststart -map_metadata 0 -codec copy -f mp4 ${outputFilePath}`;
+  const proc = Bun.spawnSync(["ffmpeg", "-i", inputFilePath, "-movflags", "faststart", "-map_metadata", "0", "-codec", "copy", "-f", "mp4", outputFilePath]);
+  if (proc.exitCode !== 0) {
+    throw new Error(`ffmpeg exited with code ${proc.exitCode}`);
+  }
+  const output = proc.stdout.toString();
+  const error = proc.stderr.toString();
+  console.log("ffmpeg output: ", output);
+  console.log("ffmpeg error: ", error);
+  return outputFilePath;
 }
