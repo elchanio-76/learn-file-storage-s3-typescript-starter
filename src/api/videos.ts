@@ -64,11 +64,11 @@ export async function handlerUploadVideo(cfg: ApiConfig, req: BunRequest) {
   await Bun.file(processedVideo).delete();
 
   // Store video key in DB.
-  const videoURL = s3VideoKey;
+  const videoURL = `https://${cfg.s3CfDistribution}/${s3VideoKey}`;
   videoData.videoURL = videoURL;
   updateVideo(cfg.db, videoData);
 
-  return respondWithJSON(200, dbVideoToSignedVideo(cfg, videoData));
+  return respondWithJSON(200, videoData);
 }
 
 export async function getVideoAspectRatio(filepath:string): Promise<string> {
@@ -113,7 +113,7 @@ function processVideoForFastStart(inputFilePath: string): string {
   console.log("ffmpeg error: ", error);
   return outputFilePath;
 }
-
+/*
 function generatePresignedURL(cfg: ApiConfig, key:string, expireTime:number):string {
   const s3File =  cfg.s3Client;
   const url = s3File.presign(key, {expiresIn: expireTime, method: "GET", acl:"public-read"});
@@ -133,3 +133,4 @@ export function dbVideoToSignedVideo(cfg: ApiConfig, video: Video): Video {
   };
   return signedVideo;
 }
+  */
